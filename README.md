@@ -30,6 +30,7 @@ _Note: I believe, you can find better pricing on Ali/eBay etc. I already had man
 ![Circuit](/images/Magic8Ball_bb.png)
 ### Zoomed ESP32 <-> Display connection (please note, different display type might require different connection scheme)
 ![Display](/images/ESP32_disp.png)
+Also, here is [YouTube video](https://www.youtube.com/watch?v=HoZhgNcJjNA) for connecting ST7789-based displays to ESP32
 
 _Note: you may want to add some resitors (for pulldown serial communication) or capacitors (for VCC). However in my case everything works "as is" :wink:_
 
