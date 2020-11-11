@@ -1,6 +1,8 @@
 # "Magic 8 Ball" toy project
 Arduino (ESP32-based) project for digital implementation of "Magic 8 ball" toy
 
+![Ball](\images\ball.jpg)
+
 ## Features
 This digital toy project offers many nice features unlike similar ones:
 * multiple languages support
@@ -25,9 +27,9 @@ Name | Link
 _Note: I believe, you can find better pricing on Ali/eBay etc. I already had many of these parts before starting the project._
 
 ## Circuit
-![Circuit](Magic8Ball_bb.png)
+![Circuit](\images\Magic8Ball_bb.png)
 ### Zoomed ESP32 <-> Display connection (please note, different display type might require different connection scheme)
-![Display](ESP32_disp.png)
+![Display](\images\ESP32_disp.png)
 
 _Note: you may want to add some resitors (for pulldown serial communication) or capacitors (for VCC). However in my case everything works "as is" :wink:_
 
