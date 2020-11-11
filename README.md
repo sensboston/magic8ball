@@ -24,7 +24,7 @@ Name | Link
 **Push button** | [Amazon](https://www.amazon.com/OFNMY-Self-Locking-Latching-Button-Switch/dp/B07NX7S9VV/)
 **Original "Magic 8 ball" toy (for case)** | [Amazon](https://www.amazon.com/Mattel-Games-Magic-Ball-Retro/dp/B0149MC426/)
 
-_Note: I believe, you can find better pricing on Ali/eBay etc. I already had many of these parts before starting the project._
+_Note: I believe, you can find better parts pricing on Ali/eBay etc. And I already had many of these parts before starting this project._
 
 ## Circuit
 ![Circuit](/images/Magic8Ball_bb.png)
