@@ -1,5 +1,5 @@
-//#define USE_DEEP_SLEEP
-//#define USE_SOUND
+#define USE_DEEP_SLEEP
+#define USE_SOUND
 
 #include <TFT_eSPI.h>
 #include <Wire.h>
@@ -16,7 +16,7 @@
 #include "FontsRus/FreeSans12.h"
 #endif
 
-void drawSettings();
+void drawSettingsMenu();
 void drawSprite(TFT_eSprite *sprite);
 void scaleSprite(TFT_eSprite *src, TFT_eSprite *dst, float scale, uint8_t alpha);
 void prepareAnimation(bool isAppear);
@@ -30,10 +30,9 @@ TFT_eSPI tft = TFT_eSPI();                      // TFT object
 TFT_eSprite mainSprite = TFT_eSprite(&tft);     // main sprite object
 TFT_eSprite scaledSprite = TFT_eSprite(&tft);   // scaled sprite object
 #define TFT_BKLIGHT_PIN 13
-int screenTimeout = 30;
-#define SCREEN_TIMEOUT (screenTimeout * 1000)
-int sleepTimeout = 60;
-#define SLEEP_TIMEOUT (sleepTimeout * 1000)
+int16_t screenTimeout = 30;
+#define SCREEN_TIMEOUT ((int)screenTimeout * 1000)
+#define SLEEP_TIMEOUT ((int)screenTimeout * 3 * 1000)
 bool displayIsOn = true;
 
 enum GAME_STATES
@@ -46,9 +45,10 @@ enum GAME_STATES
 GAME_STATES gameState;
 
 // Prediction ranges:
-//		optimistic:  1 - 10
-//		pessimistic: 4 - 12
-//		realistic:   1 - 15
+//      realistic:   1 - 15
+//        optimistic:  1 - 11
+//      pessimistic: 6 - 15
+const int predRanges[3][2] { {1, 16}, {1, 12}, {6, 16} };
 
 #define NUM_LANGUAGES 3
 #define NUM_PHRASES 16
@@ -57,7 +57,7 @@ const String languages[NUM_LANGUAGES][NUM_PHRASES][3]
     // 0: English
     {
         {"Ask me,", "then", "shake"},  
-		
+        
         {"It is", "certain", ""},       // 1
         {"Certainly", "", ""},          // 2
         {"Without", "a doubt", ""},     // 3
@@ -65,19 +65,19 @@ const String languages[NUM_LANGUAGES][NUM_PHRASES][3]
         {"As", "I see it,", "yes" },    // 5
         {"Most", "likely", "" },        // 6
         {"Yes", "", ""},                // 7
-        {"Can't", "predict", ""},       // 13		
-        {"Ask", "again", "later"},      // 14
-        {"Not", "sure", ""},            // 15
-        {"My", "reply is", "no"},       // 8
-        {"Very", "doubtful", ""},       // 9
-        {"No", "", ""},                 // 10
-        {"No", "chance", ""},           // 11
-        {"No", "way", ""},              // 12
+        {"Can't", "predict", ""},       // 8        
+        {"Ask", "again", "later"},      // 9
+        {"Not", "sure", ""},            // 10
+        {"My", "reply is", "no"},       // 11
+        {"Very", "doubtful", ""},       // 12
+        {"No", "", ""},                 // 13
+        {"No", "chance", ""},           // 14
+        {"No", "way", ""},              // 15
     },
     // 1: Russian
     {
         {"Спроси и", "встряхни", ""},
-		
+        
         {"Это", "точно!", ""},          // 1
         {"Точно", "", ""},              // 2
         {"Без", "сомнения", ""},        // 3
@@ -85,46 +85,55 @@ const String languages[NUM_LANGUAGES][NUM_PHRASES][3]
         {"Как", "я вижу,", "да"},       // 5
         {"Скорее", "всего", ""},        // 6
         {"Да", "", ""},                 // 7
-        {"Не", "могу", "сказать"},      // 13		
-        {"Спроси", "позже", ""},        // 14
-        {"Не", "уверена", ""},          // 15
-        {"Мой", "ответ:", "нет"},       // 8
-        {"Вряд ли", "", ""},            // 9
-        {"Нет", "", ""},                // 10
-        {"Без", "шансов", ""},          // 11
-        {"Никак", "не выйдет", ""},     // 12
+        {"Не", "могу", "сказать"},      // 8        
+        {"Спроси", "позже", ""},        // 9
+        {"Не", "уверена", ""},          // 10
+        {"Мой", "ответ:", "нет"},       // 11
+        {"Вряд ли", "", ""},            // 12
+        {"Нет", "", ""},                // 13
+        {"Без", "шансов", ""},          // 14
+        {"Никак", "не выйдет", ""},     // 15
     },
     // 2: Spanish
     {
-        {"Pregunte,", "luego", "agite"},	
-		
-        {"Es", "cierto", ""},					// 1
+        {"Pregunte,", "luego", "agite"},    
+        
+        {"Es", "cierto", ""},                   // 1
         {"¡Desde", "luego!", ""},               // 2
         {"Sin", "duda", ""},                    // 3
         {"Puedes", "confiar", "en ello"},       // 4
         {"Como yo", "lo veo,", "sí"},           // 5
         {"Más", "probable", ""},                // 6
         {"si", "", ""},                         // 7
-        {"No puedo", "predecir", ""},           // 13		
-        {"Pregunta de", "nuevo más", "tarde"},  // 14
-        {"No estoy", "seguro", ""},             // 15
-        {"Mi", "respuesta", "es no"},           // 8
-        {"Muy", "dudoso", ""},                  // 9
-        {"No", "", ""},                         // 10
-        {"Ninguna", "posibilidad", ""},         // 11
-        {"De ninguna", "manera", ""},           // 12
+        {"No puedo", "predecir", ""},           // 8
+        {"Pregunta de", "nuevo más", "tarde"},  // 9
+        {"No estoy", "seguro", ""},             // 10
+        {"Mi", "respuesta", "es no"},           // 11
+        {"Muy", "dudoso", ""},                  // 12
+        {"No", "", ""},                         // 13
+        {"Ninguna", "posibilidad", ""},         // 14
+        {"De ninguna", "manera", ""},           // 15
     }
 };
 
-const String langNames[NUM_LANGUAGES] = { "English", "Russian", "Spanish"};
-byte lang = 0;
-byte phraseIdx = 0;
+#define NUM_MENUS 4
+const String menuTitles[NUM_MENUS] = { "Choose language:", "Screen timeout:", "Sound volume:", "Prediction kind:" };
+const String menuChoices[NUM_MENUS][NUM_LANGUAGES] = { 
+    { "English", "Russian", "Spanish" },
+    { "30 sec", "45 sec", "60 sec" },
+    { "Loud", "Quiet", "No sound" },
+    { "Realistic", "Optimistic", "Pessimistic" }
+};
+
+byte lang = 0, range = 0;
+int16_t soundVolume = 30;
+byte phraseIdx = 0, currMenu = 0, currChoice = 0;
 bool doRandSeed = true;
 
 #define MIN_SCALE 0.1
 #define MAX_SCALE 0.98
-const int animSteps = 24;
-const int tr_side = 206;
+const int16_t animSteps = 24;
+const int16_t tr_side = 206;
 float angle, d_angle = 1.0, scale = 1.0, d_scale = 1.0 / animSteps;
 int rotate_dir = 1;
 unsigned long startShowTime, startHideTime, displayOffTime;
@@ -142,15 +151,13 @@ enum INPUT_STATES
     RIGHT
 };
 
-int16_t x, y, z, keyMax;
-float ax, ay, az, gx, gy, gz;
-float avg_ax, avg_ay, avg_az;
+float ax, ay, az, gx, gy, gz, avg_ax, avg_ay, avg_az, avg_gx, avg_gy, avg_gz;
 float min_ax, max_ax, min_ay, max_ay, min_az, max_az;
-int16_t checkInputCount, keyCount, shakeCount = 0;
+int16_t x, y, z, checkInputCount, shakeCount = 0;
 unsigned long measTime;
 INPUT_STATES inputState = NONE;
 
-#define INPUT_INTERVAL 1000
+#define INPUT_INTERVAL 500
 int checkInputInterval = INPUT_INTERVAL;
 
 #ifdef USE_SOUND
@@ -163,10 +170,16 @@ void setup()
 {
     Serial.begin(115200);
 
-    // Read current language from EEPROM
-    EEPROM.begin(1);
+    // Read settings values from EEPROM
+    EEPROM.begin(16);
     lang = EEPROM.read(0);
     if (lang >= NUM_LANGUAGES) lang = 0;
+    screenTimeout = 30 + (EEPROM.read(1)*15);
+    if (screenTimeout > 60) screenTimeout = 30;
+    soundVolume = (2-EEPROM.read(2))*15;
+    if (soundVolume > 30) soundVolume = 30;
+    range = EEPROM.read(3);
+    if (range > 2) range = 0;
 
     // MPU initialization
     Wire.begin();
@@ -184,9 +197,8 @@ void setup()
     mpu.setIntMotionEnabled(false);                 // Set interrupt enabled status
 
     checkInputInterval = INPUT_INTERVAL;
-    keyMax = 50;
-    keyCount = checkInputCount = shakeCount = 0; 
-    az = avg_az = 0;
+    checkInputCount = shakeCount = 0; 
+    avg_ax = avg_ay = avg_az = avg_gx = avg_gy = avg_gz = az = 0;
     min_ax = min_ay = min_az = 5000;
     max_ax = max_ay = max_az = -5000;
     checkInput();
@@ -229,17 +241,18 @@ void setup()
     if (player.begin(softSerial, false, true)) 
     {  
         playerReady = true;
-        Serial.println("Player is ready!");
+        //Serial.println("Player is ready!");
         // Set serial communictaion time out 500ms
         player.setTimeOut(500);
         player.outputDevice(DFPLAYER_DEVICE_SD);
-        player.volume(30);
+        player.volume(soundVolume);
     }
 #endif    
 
     prepareAnimation(true);
     gameState = APPEARANCE;
     inputState = NONE;
+    startHideTime = millis();
 }
 
 void loop() 
@@ -264,10 +277,11 @@ void loop()
         {
             if (shakeCount >= 4)
             {
-                shakeCount = 0;
+                currMenu = shakeCount = 0;
+                currChoice = lang;
                 gameState = SETTINGS;
                 inputState = NONE;
-                drawSettings();
+                drawSettingsMenu();
                 delay(500);
                 startHideTime = millis();
             }
@@ -292,19 +306,45 @@ void loop()
                         drawSprite(&mainSprite);
                         mainSprite.pushSprite(0, 0);
                         gameState = SHOW;
-                        delay(1000);
+                        delay(500);
                     }
                     else
                     {
-                        if (inputState == UP) lang--; else if (inputState == DOWN) lang++;
-                        if (lang < 0) lang = NUM_LANGUAGES-1; else if (lang >= NUM_LANGUAGES) lang = 0;
+                        // Switch selection
+                        if (inputState == UP || inputState == DOWN)
+                        {
+                            if (inputState == UP) currChoice--; else if (inputState == DOWN) currChoice++;
+                            if (currChoice < 0) currChoice = NUM_LANGUAGES-1; else if (currChoice >= NUM_LANGUAGES) currChoice = 0;
+
+                            // Save new setting
+                            EEPROM.write(currMenu, currChoice);
+                            EEPROM.commit();
+                            
+                            if (currMenu == 0) lang = currChoice;
+                            else if (currMenu == 1) screenTimeout = 30 + (currChoice*15);
+                            else if (currMenu == 2)
+                            {
+                                soundVolume = (2-currChoice) * 15;
+#ifdef USE_SOUND                                
+                                player.volume(soundVolume);
+#endif                                
+                            }
+                            else if (currMenu == 3) range = currChoice;
+                            
+                        }
+                        else
+                        {
+                            if (inputState == LEFT) currMenu--; else if (inputState == RIGHT) currMenu++;
+                            if (currMenu < 0) currMenu = NUM_MENUS-1; else if (currMenu >= NUM_MENUS) currMenu = 0;
+                            
+                            if (currMenu == 0) currChoice = lang;
+                            else if (currMenu == 1) currChoice = (screenTimeout-30) / 15;
+                            else if (currMenu == 2) currChoice = 2 - (soundVolume / 15);
+                            else if (currMenu == 3) currChoice = range;
+                        }
     
-                        drawSettings();
-    
-                        // Save new language setting
-                        EEPROM.write(0, lang);
-                        EEPROM.commit();
-                        delay(500);                    
+                        drawSettingsMenu();
+                        delay(250);                    
                     }
                     shakeCount = 0;
                     startHideTime = millis();                
@@ -315,7 +355,7 @@ void loop()
                 if (millis()-startHideTime > 1000)
                 {
 #ifdef USE_SOUND
-                    if (playerReady && scale <= MIN_SCALE + 0.1)
+                    if (playerReady && scale <= MIN_SCALE + 0.1 && soundVolume > 0)
                     {
                         player.play(lang*NUM_PHRASES + phraseIdx + 1);
                     }
@@ -337,8 +377,8 @@ void loop()
                 // Provide new "divination" on shake
                 if (inputState == SHAKE)
                 {
-                    // select random prediction
-                    phraseIdx = random(1, 14);
+                    // select random prediction, based on range
+                    phraseIdx = random(predRanges[range][0], predRanges[range][1]);
                     prepareAnimation(false);
                     gameState = DISAPPEARANCE;
                 }
@@ -377,6 +417,9 @@ void loop()
 #ifdef USE_DEEP_SLEEP
         if (millis()-displayOffTime > SLEEP_TIMEOUT)
         {
+#ifdef USE_SOUND
+            if (playerReady) player.sleep();
+#endif            
             // Put ST7789 TFT controller to sleep (dispaly is already off)
             tft.writecommand(0x10);
             // Enable motion interrupt on MPU6050
@@ -421,17 +464,17 @@ void turnDisplay(bool isOn)
 }
 
 // Draw settings menu
-void drawSettings()
+void drawSettingsMenu()
 {
     int w = mainSprite.width();
     int lineHeight = 32;
     int startY = lineHeight*2;
     mainSprite.fillSprite(TFT_BLACK);
-    mainSprite.drawString("Choose language:", 4, 2);
+    mainSprite.drawString(menuTitles[currMenu], 4, 2);
     for (int i=0; i<NUM_LANGUAGES; i++)
     {
-        if (i == lang) mainSprite.fillRoundRect(2, startY + (i*lineHeight), w-2, lineHeight, 2, TFT_BLUE);
-        mainSprite.drawString(langNames[i], 20, startY + (i*lineHeight));
+        if (i == currChoice) mainSprite.fillRoundRect(2, startY + (i*lineHeight), w-2, lineHeight, 2, TFT_BLUE);
+        mainSprite.drawString(menuChoices[currMenu][i], 20, startY + (i*lineHeight));
     }
     mainSprite.pushSprite(0, 0);
 }
@@ -562,7 +605,8 @@ char *utf8rus2(const char *source)
     return target;
 }
 
-#define WINDOW_SIZE 25
+#define WINDOW_SIZE 30
+
 float approxAverage (float avg, float input) 
 {
     avg -= avg / WINDOW_SIZE;
@@ -572,23 +616,30 @@ float approxAverage (float avg, float input)
 
 void checkInput()
 {
-    mpu.getAcceleration(&x, &y, &z);
+    int16_t a_x, a_y, a_z, g_x, g_y, g_z;
+    mpu.getMotion6(&a_x, &a_y, &a_z, &g_x, &g_y, &g_z);
 
     if (doRandSeed)
     {
-        randomSeed(x+y+z);
+        randomSeed(a_x+a_y+a_z);
         doRandSeed = false;
     }
 
-    ax = x / 100;
-    ay = y / 100;
-    az = z / 100;
+    ax = a_x / 100; 
+    ay = a_y / 100; 
+    az = a_z / 100;
+    gx = g_x / 100; 
+    gy = g_y / 100; 
+    gz = g_z / 100;
 
+    // Calculate running averages
     avg_ax = approxAverage(avg_ax, ax);
     avg_ay = approxAverage(avg_ay, ay);
     avg_az = approxAverage(avg_az, az);
+    avg_gx = approxAverage(avg_gx, gx);
+    avg_gy = approxAverage(avg_gy, gy);
+    avg_gz = approxAverage(avg_gz, gz);
 
-    // Detect max & min values
     if (ax > max_ax) max_ax = ax; else if (ax < min_ax) min_ax = ax;
     if (ay > max_ay) max_ay = ay; else if (ay < min_ay) min_ay = ay;
     if (az > max_az) max_az = az; else if (az < min_az) min_az = az;
@@ -598,27 +649,24 @@ void checkInput()
     {
         min_ax = min_ay = min_az = 5000;
         max_ax = max_ay = max_az = -5000;
-        measTime = millis();
         shakeCount++;
-        inputState = SHAKE;        
+        inputState = SHAKE;
+        measTime = millis();        
     }
     // Up/down, left/right detection (for menu control)
-    else if (keyCount++ > keyMax)
+    else if (millis()-measTime > 1000)
     {
-        keyCount = 0;
-        keyMax = 50;
-        float dz = (az-avg_az) / 8;
+        int16_t dx = (gx-avg_gx) / 5; 
+        int16_t dy = (gy-avg_gy) / 5; 
+        int16_t dz = (gz-avg_gz) / 5;
 
-        if (abs(dz) < 30 && abs(dz) > 4)
+        if (abs(dx) > 40 && abs(dy) > 40) inputState = (dx < 0) ? DOWN : UP;
+        else if (abs(dz) > 20) inputState = (dz < 0) ? LEFT : RIGHT;
+
+        if (inputState != NONE)
         {
-            if (dz < -5) inputState = UP; 
-            else if (dz > 5) inputState = DOWN;
-            
-            if (inputState != NONE)
-            {
-                keyMax = 200;
-                measTime = millis();
-            }
+            gx = gy = gz = avg_gx = avg_gy = avg_gz = 0;
+            measTime = millis();
         }
     }
 }
