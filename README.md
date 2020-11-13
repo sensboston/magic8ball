@@ -8,8 +8,8 @@ This digital toy project offers many nice features unlike similar ones:
 * multiple languages support
 * synthetic voices
 * realistic (or "realistic" :wink: ) animations
-* gesture-based settings
-* "deep sleep" functionality for better power consumption
+* gesture-based user interface
+* "deep sleep" functionality (for better power consumption)
 
 ## Parts
 Name | Link
