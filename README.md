@@ -1,7 +1,9 @@
 # "Magic 8 Ball" toy project
 Arduino (ESP32-based) project for digital implementation of "Magic 8 ball" toy
 
-![Ball](/images/ball.jpg)
+<img src="/images/ball.jpg" width="500" height="500">
+
+[<img src="https://img.youtube.com/vi/ifog76ZFch0/maxresdefault.jpg" width="50%">](https://youtu.be/ifog76ZFch0)
 
 ## Features
 This digital toy project offers many nice features unlike similar ones:
